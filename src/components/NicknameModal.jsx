@@ -17,12 +17,11 @@ export default function NicknameModal({ open, onRegistered }) {
     setSubmitting(true)
 
     try {
-      const exists = await checkNicknameExists(nick)
-      if (exists) {
-        message.info(`「${nick}」已存在，已直接延用您的舊進度。`)
-      }
       const result = await registerNickname(nick)
       if (result.success) {
+        if (result.existed) {
+          message.info(`「${nick}」已存在，已直接延用您的舊進度。`)
+        }
         message.success('暱稱設定成功！')
         if (onRegistered) onRegistered(nick)
       } else {

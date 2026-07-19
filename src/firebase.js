@@ -4,7 +4,7 @@
 // VITE_FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_MESSAGING_SENDER_ID, VITE_FIREBASE_APP_ID
 
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -18,10 +18,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-/** Firestore 資料庫實例 */
-export const db = getFirestore(app)
+/** Firestore 資料庫實例 — 啟用 experimentalForceLongPolling 解決 Safari 連線緩慢、卡住的問題 */
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+})
 
 /** Firebase Authentication 實例（後台管理員專用） */
 export const auth = getAuth(app)
 
 export default app
+

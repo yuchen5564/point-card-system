@@ -122,6 +122,7 @@ export function useGameProgress() {
       
       let completed = []
       let unlockedList = []
+      let existed = false
 
       if (!snap.exists()) {
         // 第一次登錄，建立全新玩家文件
@@ -133,6 +134,7 @@ export function useGameProgress() {
         })
       } else {
         // 已存在帳號：從 Firestore 載入先前的關卡記錄與解鎖紀錄
+        existed = true
         const data = snap.data()
         completed = data.completed_levels ?? []
         unlockedList = data.unlocked_levels ?? []
@@ -146,7 +148,7 @@ export function useGameProgress() {
       setProgress(completed)
       setUnlocked(unlockedList)
       
-      return { success: true }
+      return { success: true, existed }
     } catch (err) {
       console.error('registerNickname error:', err)
       setError('登錄失敗，請稍後再試。')

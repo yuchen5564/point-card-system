@@ -66,13 +66,12 @@ export default function Home() {
     const nick = inputNick.trim()
     if (!nick) return
     setRegistering(true)
-    const exists = await checkNicknameExists(nick)
-    if (exists) {
-      setToast({ message: `「${nick}」已存在，將延用現有進度。`, type: 'info' })
-    }
     const result = await registerNickname(nick)
     setRegistering(false)
     if (result.success) {
+      if (result.existed) {
+        setToast({ message: `「${nick}」已存在，將延用現有進度。`, type: 'info' })
+      }
       // 登錄成功，檢查並跳轉暫存的 NFC 網址
       const redirectUrl = sessionStorage.getItem('nfc_game_redirect_url')
       if (redirectUrl) {
