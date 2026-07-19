@@ -43,8 +43,16 @@ export default function Complete() {
     }
 
     try {
-      // 確保獲取該暱稱在 Firestore 中最即時的過關資料
-      const { completed } = await fetchPlayerProgress(activeNick)
+      // 確保獲取該暱稱在 Firestore 中最即時的過關與解鎖資料
+      const { completed, unlockedList } = await fetchPlayerProgress(activeNick)
+
+      // 保護機制：檢查玩家是否已經領取/解鎖此關卡
+      if (!unlockedList.includes(levelId)) {
+        setErrorMsg('您尚未領取或解鎖此關卡！請先前往掃描起點的「任務 QR Code / NFC 貼紙」領取任務，再掃描過關貼紙。')
+        setStatus(STATUS.ERROR)
+        return
+      }
+
       if (completed.includes(levelId)) {
         setStatus(STATUS.DUPLICATE)
         return
