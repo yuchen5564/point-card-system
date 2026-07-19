@@ -64,7 +64,7 @@ export default function Login() {
           border: '1px solid rgba(99,102,241,0.12)',
           position: 'relative', zIndex: 1,
         }}
-        styles={{ body: { padding: 40 } }}
+        classNames={{ body: 'admin-login-card-body' }}
       >
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>

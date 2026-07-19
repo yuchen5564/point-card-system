@@ -156,7 +156,8 @@ export default function Players() {
           prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: 240, borderRadius: 8 }}
+          className="players-search-input"
+          style={{ borderRadius: 8 }}
           allowClear
         />
       </div>
@@ -167,6 +168,7 @@ export default function Players() {
           columns={columns}
           dataSource={filtered}
           loading={loading}
+          scroll={{ x: 650 }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,

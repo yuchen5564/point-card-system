@@ -107,9 +107,9 @@ export default function Dashboard() {
               const pct = totalPlayers > 0 ? Math.round((passed / totalPlayers) * 100) : 0
               return (
                 <div key={level.id}>
-                  <div style={{ display: 'flex', justifyContent: 'between', marginBottom: 8, fontSize: 14 }}>
-                    <Text strong style={{ flex: 1 }}>{level.name}</Text>
-                    <Text type="secondary">{passed} / {totalPlayers} 玩家 ({pct}%)</Text>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: 14, flexWrap: 'wrap', gap: 8 }}>
+                    <Text strong>{level.name}</Text>
+                    <Text type="secondary" style={{ flexShrink: 0 }}>{passed} / {totalPlayers} 玩家 ({pct}%)</Text>
                   </div>
                   <Progress
                     percent={pct}

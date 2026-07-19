@@ -283,3 +283,71 @@ body {
   letter-spacing: -0.03em;
   line-height: 1;
 }
+
+/* ═══════════════════════════════════════════════
+   Admin Dashboard Responsive Styles
+   ═══════════════════════════════════════════════ */
+.admin-mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  transition: opacity 0.2s ease;
+}
+
+@media (min-width: 992px) {
+  .admin-mobile-overlay {
+    display: none;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .responsive-sider {
+    position: fixed !important;
+    height: 100vh !important;
+    z-index: 1001 !important;
+  }
+}
+
+/* Responsive Admin Header */
+.admin-header {
+  padding: 0 16px !important;
+}
+@media (min-width: 768px) {
+  .admin-header {
+    padding: 0 24px !important;
+  }
+}
+
+/* Responsive Admin Content */
+.admin-content {
+  padding: 16px !important;
+}
+@media (min-width: 768px) {
+  .admin-content {
+    padding: 24px !important;
+  }
+}
+
+/* Responsive Admin Login Card Body */
+.admin-login-card-body {
+  padding: 24px !important;
+}
+@media (min-width: 576px) {
+  .admin-login-card-body {
+    padding: 40px !important;
+  }
+}
+
+/* Responsive Players Search Input */
+.players-search-input {
+  width: 100% !important;
+}
+@media (min-width: 576px) {
+  .players-search-input {
+    width: 240px !important;
+  }
+}
+
+

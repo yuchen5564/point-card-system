@@ -243,12 +243,12 @@ export default function Levels() {
 
   return (
     <AdminLayout>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>關卡管理</Title>
           <Text type="secondary">共 {levels.length} 個關卡</Text>
         </div>
-        <Space>
+        <Space wrap>
           <Button
             type="default"
             icon={<FilePdfOutlined />}
@@ -285,6 +285,7 @@ export default function Levels() {
           columns={columns}
           dataSource={levels}
           loading={loading}
+          scroll={{ x: 800 }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
@@ -296,7 +297,7 @@ export default function Levels() {
               const completeUrl = buildCompleteUrl(BASE_URL, record.id, record.pass_token)
               return (
                 <div style={{ padding: '8px 16px', background: '#fafafa', borderRadius: 8 }}>
-                  <Descriptions title="NFC 連結資訊" bordered size="small" column={1}>
+                  <Descriptions title="NFC 連結資訊" bordered size="small" column={1} layout="vertical">
                     <Descriptions.Item label="任務掃描貼紙 (Task URL)">
                       <Space>
                         <Text copyable={{ text: taskUrl }} style={{ fontSize: 13, wordBreak: 'break-all' }}>{taskUrl}</Text>

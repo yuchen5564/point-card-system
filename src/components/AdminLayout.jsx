@@ -56,17 +56,31 @@ export default function AdminLayout({ children }) {
     },
   ]
 
+  const handleMenuClick = () => {
+    if (window.innerWidth < 992) {
+      setCollapsed(true)
+    }
+  }
+
   const breadcrumbLabel = BREADCRUMB_MAP[location.pathname]
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {/* ── 手機端側邊欄遮罩 ── */}
+      {!collapsed && (
+        <div className="admin-mobile-overlay" onClick={() => setCollapsed(true)} />
+      )}
+
       {/* ── 側邊欄 ── */}
       <Sider
+        breakpoint="lg"
+        collapsedWidth="0"
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
         trigger={null}
         width={220}
+        className="responsive-sider"
         style={{
           background: '#001529',
           boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
@@ -113,6 +127,7 @@ export default function AdminLayout({ children }) {
             ...item,
             label: <NavLink to={item.key} style={{ textDecoration: 'none' }}>{item.label}</NavLink>,
           }))}
+          onClick={handleMenuClick}
           style={{ border: 'none', marginTop: 8 }}
         />
       </Sider>
@@ -120,18 +135,20 @@ export default function AdminLayout({ children }) {
       {/* ── 右側主體 ── */}
       <Layout>
         {/* Header */}
-        <Header style={{
-          background: '#fff',
-          padding: '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 1px 4px rgba(0,21,41,0.08)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          height: 64,
-        }}>
+        <Header
+          className="admin-header"
+          style={{
+            background: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 4px rgba(0,21,41,0.08)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            height: 64,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* 收合按鈕 */}
             <span
@@ -150,6 +167,7 @@ export default function AdminLayout({ children }) {
 
             {/* 麵包屑 */}
             <Breadcrumb
+              className="hidden sm:inline-block"
               items={[
                 { title: '管理後台' },
                 ...(breadcrumbLabel ? [{ title: breadcrumbLabel }] : []),
@@ -173,16 +191,26 @@ export default function AdminLayout({ children }) {
               >
                 {user?.email?.[0]?.toUpperCase() ?? 'A'}
               </Avatar>
-              <Text style={{ fontSize: 13, fontWeight: 500 }}>管理員</Text>
+              <span className="hidden sm:inline-block">
+                <Text style={{ fontSize: 13, fontWeight: 500 }}>管理員</Text>
+              </span>
             </div>
           </Dropdown>
         </Header>
 
         {/* 內容 */}
-        <Content style={{ padding: 24, background: '#f5f7fb', minHeight: 'calc(100vh - 64px)' }}>
+        <Content 
+          className="admin-content"
+          style={{ 
+            background: '#f5f7fb', 
+            minHeight: 'calc(100vh - 64px)',
+            overflowX: 'hidden'
+          }}
+        >
           {children}
         </Content>
       </Layout>
     </Layout>
   )
 }
+
