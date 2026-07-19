@@ -123,7 +123,7 @@ export default function Home() {
           }}>
             <ThunderboltOutlined style={{ fontSize: 28, color: '#fff' }} />
           </div>
-          <Title level={2} style={{ margin: 0 }}>NFC 集點闖關</Title>
+          <Title level={2} style={{ margin: 0 }}>集點闖關</Title>
           <Text type="secondary" style={{ fontSize: 14 }}>輸入暱稱，開始你的冒險旅程</Text>
         </div>
 
