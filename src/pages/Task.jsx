@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons'
 
 import NicknameModal from '../components/NicknameModal'
+import MarkdownRenderer from '../components/MarkdownRenderer'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -328,12 +329,6 @@ export default function Task() {
           bordered={false}
           style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(15,23,42,0.04)' }}
         >
-          {/* 關卡ID徽章 */}
-          <div style={{ marginBottom: 12 }}>
-            <Tag color="purple" icon={<EnvironmentOutlined />} style={{ borderRadius: 6, fontWeight: 600 }}>
-              {level?.id}
-            </Tag>
-          </div>
 
           <Title level={3} style={{ margin: '0 0 16px 0', fontSize: 24 }}>{level?.name}</Title>
 
@@ -355,9 +350,7 @@ export default function Task() {
             <Text type="secondary" strong style={{ display: 'block', fontSize: 11, letterSpacing: '0.05em', marginBottom: 8, textTransform: 'uppercase' }}>
               任務說明
             </Text>
-            <Paragraph style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: '#334155', whiteSpace: 'pre-wrap' }}>
-              {level?.description}
-            </Paragraph>
+            <MarkdownRenderer content={level?.description} />
           </div>
 
           {/* 提示訊息 */}

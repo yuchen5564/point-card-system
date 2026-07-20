@@ -203,7 +203,6 @@ export default function Home() {
             <Text strong style={{ fontSize: 14 }}>集點闖關</Text>
           </Space>
           <Space size="middle">
-            <Badge color="#4f46e5" count={nickname} style={{ backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: 600 }} />
             <Button
               type="text"
               icon={<LogoutOutlined />}
