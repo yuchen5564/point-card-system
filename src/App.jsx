@@ -8,6 +8,7 @@ import Complete  from './pages/Complete'
 import Login     from './pages/admin/Login'
 import Dashboard from './pages/admin/Dashboard'
 import Levels    from './pages/admin/Levels'
+import Flow      from './pages/admin/Flow'
 import Players   from './pages/admin/Players'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -27,6 +28,9 @@ export default function App() {
         } />
         <Route path="/admin/levels" element={
           <ProtectedRoute><Levels /></ProtectedRoute>
+        } />
+        <Route path="/admin/flow" element={
+          <ProtectedRoute><Flow /></ProtectedRoute>
         } />
         <Route path="/admin/players" element={
           <ProtectedRoute><Players /></ProtectedRoute>

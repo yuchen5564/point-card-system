@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useGameProgress } from '../hooks/useGameProgress'
 import { Card, Button, Spin, Result, Typography, Space } from 'antd'
@@ -43,6 +43,41 @@ export default function Complete() {
     }
 
     try {
+      // 取得所有啟用的關卡與目前的順序設定，以驗證此關卡是否為最後一關
+      const q = query(collection(db, 'levels'), where('is_active', '==', true))
+      const snapLevels = await getDocs(q)
+      const activeLevels = snapLevels.docs.map(d => ({ id: d.id, ...d.data() }))
+
+      const flowSnap = await getDoc(doc(db, 'settings', 'flow'))
+      let sequence = []
+      if (flowSnap.exists()) {
+        sequence = flowSnap.data().sequence || []
+      }
+
+      activeLevels.sort((a, b) => {
+        const idxA = sequence.indexOf(a.id)
+        const idxB = sequence.indexOf(b.id)
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB
+        if (idxA !== -1) return -1
+        if (idxB !== -1) return 1
+        const tA = a.created_at?.seconds || 0
+        const tB = b.created_at?.seconds || 0
+        return tA - tB
+      })
+
+      if (activeLevels.length > 0) {
+        const lastLevel = activeLevels[activeLevels.length - 1]
+        if (levelId !== lastLevel.id) {
+          setErrorMsg('此過關連結無效。本遊戲僅在最後一關設有過關確認貼紙，其他關卡請直接掃描下一關的任務貼紙過關！')
+          setStatus(STATUS.ERROR)
+          return
+        }
+      } else {
+        setErrorMsg('目前無啟用的關卡。')
+        setStatus(STATUS.ERROR)
+        return
+      }
+
       // 確保獲取該暱稱在 Firestore 中最即時的過關與解鎖資料
       const { completed, unlockedList } = await fetchPlayerProgress(activeNick)
 

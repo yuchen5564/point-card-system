@@ -7,16 +7,13 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import AdminLayout from '../../components/AdminLayout'
-import { generatePassToken, buildTaskUrl, buildCompleteUrl } from '../../utils/tokenHelper'
-import { exportLevelsToPdf } from '../../utils/pdfHelper'
+import { generatePassToken } from '../../utils/tokenHelper'
 import {
   Table, Button, Card, Form, Input, Switch, Space, Modal,
-  Typography, message, Badge, Tooltip, Collapse, Descriptions
+  Typography, message, Badge
 } from 'antd'
 import {
-  PlusOutlined, DeleteOutlined, CopyOutlined, LinkOutlined,
-  ExclamationCircleOutlined, ThunderboltOutlined, EyeOutlined, EditOutlined,
-  FilePdfOutlined
+  PlusOutlined, DeleteOutlined, ExclamationCircleOutlined, EditOutlined
 } from '@ant-design/icons'
 
 const { Title, Text, Paragraph } = Typography
@@ -31,26 +28,6 @@ export default function Levels() {
   const [editingRecord, setEditingRecord] = useState(null) // null = 新增, 否則為正編輯 of 關卡
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
-  const [exporting, setExporting] = useState(false)
-
-  const handleExportPdf = async () => {
-    const activeLevels = levels.filter(l => l.is_active === true)
-    if (activeLevels.length === 0) {
-      message.warning('目前沒有已啟用的關卡可供下載')
-      return
-    }
-    setExporting(true)
-    message.loading({ content: '正在產生 QR Code PDF 文件...', key: 'pdf_export' })
-    try {
-      await exportLevelsToPdf(activeLevels, BASE_URL)
-      message.success({ content: 'PDF 檔案下載成功！', key: 'pdf_export' })
-    } catch (err) {
-      console.error(err)
-      message.error({ content: 'PDF 檔案產生失敗，請稍後再試。', key: 'pdf_export' })
-    } finally {
-      setExporting(false)
-    }
-  }
 
   const fetchLevels = async () => {
     setLoading(true)
@@ -250,19 +227,6 @@ export default function Levels() {
         </div>
         <Space wrap>
           <Button
-            type="default"
-            icon={<FilePdfOutlined />}
-            onClick={handleExportPdf}
-            loading={exporting}
-            style={{
-              borderRadius: 8,
-              height: 40,
-              fontWeight: 500,
-            }}
-          >
-            下載所有 QR Code (PDF)
-          </Button>
-          <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleCreateClick}
@@ -290,22 +254,6 @@ export default function Levels() {
             pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) => `顯示第 ${range[0]} 至 ${range[1]} 項，共 ${total} 項`
-          }}
-          expandable={{
-            expandedRowRender: (record) => {
-              const taskUrl = buildTaskUrl(BASE_URL, record.id, record.task_token)
-              return (
-                <div style={{ padding: '8px 16px', background: '#fafafa', borderRadius: 8 }}>
-                  <Descriptions title="NFC 連結資訊" bordered size="small" column={1} layout="vertical">
-                    <Descriptions.Item label="關卡掃描貼紙 (Scan URL)">
-                      <Space>
-                        <Text copyable={{ text: taskUrl }} style={{ fontSize: 13, wordBreak: 'break-all' }}>{taskUrl}</Text>
-                      </Space>
-                    </Descriptions.Item>
-                  </Descriptions>
-                </div>
-              )
-            },
           }}
         />
       </Card>

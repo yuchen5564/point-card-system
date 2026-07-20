@@ -17,10 +17,17 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
 
   for (let i = 0; i < activeLevels.length; i++) {
     const level = activeLevels[i]
+    const isLast = i === activeLevels.length - 1
     
     // 生成 QR Code 的 Base64
     const taskUrl = `${baseUrl}/task?level=${level.id}&token=${level.task_token}`
-    const taskQrData = await QRCode.toDataURL(taskUrl, { margin: 1, width: 320 })
+    const completeUrl = `${baseUrl}/complete?level=${level.id}&token=${level.pass_token}`
+
+    const taskQrData = await QRCode.toDataURL(taskUrl, { margin: 1, width: isLast ? 220 : 320 })
+    let completeQrData = ''
+    if (isLast) {
+      completeQrData = await QRCode.toDataURL(completeUrl, { margin: 1, width: 220 })
+    }
 
     // 建立畫布
     const canvas = document.createElement('canvas')
@@ -62,66 +69,109 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
     const desc = level.description || '無描述'
     ctx.fillText(`任務描述：${desc.length > 30 ? desc.slice(0, 30) + '...' : desc}`, 40, 240)
 
-    // 4. 置中單一 QR Code 掃描貼紙區
-    // 根據關卡順序決定標題與風格
-    let qrTitle = ''
-    let qrColor = '#4f46e5'
-    let guide1 = ''
-    let guide2 = ''
-    let cardBg = '#f8fafc'
-    let cardBorder = '#cbd5e1'
+    if (!isLast) {
+      // 4. 置中單一 QR Code 掃描貼紙區
+      // 根據關卡順序決定標題與風格
+      let qrTitle = ''
+      let qrColor = '#4f46e5'
+      let guide1 = ''
+      let guide2 = ''
+      let cardBg = '#f8fafc'
+      let cardBorder = '#cbd5e1'
 
-    if (i === 0) {
-      qrTitle = '【 第一關：掃描起點領取任務 】'
-      qrColor = '#4f46e5'
-      guide1 = '請將此 QR Code 貼在起點位置'
-      guide2 = '玩家掃描後即可登錄並領取第一關任務！'
-      cardBg = '#f5f3ff'
-      cardBorder = '#ddd6fe'
-    } else if (i === activeLevels.length - 1) {
-      qrTitle = '【 最後一關：掃描終點通關 】'
-      qrColor = '#ea580c'
-      guide1 = '請將此 QR Code 貼在最後一關終點位置'
-      guide2 = '玩家完成上一關任務後，掃描此碼通關並完成遊戲！'
-      cardBg = '#fff7ed'
-      cardBorder = '#ffedd5'
+      if (i === 0) {
+        qrTitle = '【 第一關：掃描起點領取任務 】'
+        qrColor = '#4f46e5'
+        guide1 = '請將此 QR Code 貼在起點位置'
+        guide2 = '玩家掃描後即可登錄並領取第一關任務！'
+        cardBg = '#f5f3ff'
+        cardBorder = '#ddd6fe'
+      } else {
+        qrTitle = `【 第 ${i + 1} 關：掃描過關與領取任務 】`
+        qrColor = '#0ea5e9'
+        guide1 = `請將此 QR Code 貼在第 ${i + 1} 關位置`
+        guide2 = '玩家完成前一關任務後，掃描此碼過關並領取下一關！'
+        cardBg = '#f0f9ff'
+        cardBorder = '#e0f2fe'
+      }
+
+      // 繪製外框卡片
+      ctx.fillStyle = cardBg
+      ctx.fillRect(100, 290, 600, 680)
+      ctx.strokeStyle = cardBorder
+      ctx.lineWidth = 3
+      ctx.strokeRect(100, 290, 600, 680)
+
+      // 繪製 QR Code 標題
+      ctx.fillStyle = qrColor
+      ctx.font = 'bold 24px "Microsoft JhengHei", sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(qrTitle, 400, 350)
+
+      // 繪製 QR Code 圖片
+      const imgTask = await loadImage(taskQrData)
+      ctx.drawImage(imgTask, 240, 390, 320, 320)
+
+      // 繪製 URL 與引導文字
+      ctx.fillStyle = qrColor
+      ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'
+      ctx.fillText(guide1, 400, 755)
+      
+      ctx.fillStyle = '#64748b'
+      ctx.font = '14px sans-serif'
+      ctx.fillText(guide2, 400, 785)
+      
+      ctx.font = '11px monospace'
+      wrapText(ctx, taskUrl, 400, 840, 520, 16)
     } else {
-      qrTitle = `【 第 ${i + 1} 關：掃描過關與領取任務 】`
-      qrColor = '#0ea5e9'
-      guide1 = `請將此 QR Code 貼在第 ${i + 1} 關位置`
-      guide2 = '玩家完成前一關任務後，掃描此碼過關並領取下一關！'
-      cardBg = '#f0f9ff'
-      cardBorder = '#e0f2fe'
+      // 最後一關：繪製雙卡片 (左側領取任務，右側過關完成)
+      // 5.1 左側：任務領取貼紙區
+      ctx.fillStyle = '#f8fafc'
+      ctx.fillRect(40, 290, 340, 660)
+      ctx.strokeStyle = '#cbd5e1'
+      ctx.lineWidth = 2
+      ctx.strokeRect(40, 290, 340, 660)
+
+      // 繪製 QR Code 標題
+      ctx.fillStyle = '#ea580c'
+      ctx.font = 'bold 22px "Microsoft JhengHei", sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('【 1. 最後一關領取任務 】', 210, 340)
+
+      // 繪製 QR Code 圖片
+      const imgTask = await loadImage(taskQrData)
+      ctx.drawImage(imgTask, 100, 380, 220, 220)
+
+      // 繪製 URL 與引導文字
+      ctx.fillStyle = '#64748b'
+      ctx.font = '13px sans-serif'
+      ctx.fillText('請將此 QR Code 貼在關卡入口', 210, 640)
+      ctx.fillText('玩家掃描後可查看最後一關任務說明', 210, 665)
+      ctx.font = '11px monospace'
+      wrapText(ctx, taskUrl, 210, 720, 300, 16)
+
+      // 5.2 右側：過關完成貼紙區
+      ctx.fillStyle = '#f0fdf4'
+      ctx.fillRect(420, 290, 340, 660)
+      ctx.strokeStyle = '#bbf7d0'
+      ctx.strokeRect(420, 290, 340, 660)
+
+      ctx.fillStyle = '#16a34a'
+      ctx.font = 'bold 22px "Microsoft JhengHei", sans-serif'
+      ctx.fillText('【 2. 終點完成掃描過關 】', 590, 340)
+
+      const imgComplete = await loadImage(completeQrData)
+      ctx.drawImage(imgComplete, 480, 380, 220, 220)
+
+      ctx.fillStyle = '#16a34a'
+      ctx.font = 'bold 13px "Microsoft JhengHei", sans-serif'
+      ctx.fillText('⚠ 警示：請由工作人員/關主保管', 590, 640)
+      ctx.fillStyle = '#64748b'
+      ctx.font = '13px sans-serif'
+      ctx.fillText('玩家完成全部任務後，掃描此碼過關', 590, 665)
+      ctx.font = '11px monospace'
+      wrapText(ctx, completeUrl, 590, 720, 300, 16)
     }
-
-    // 繪製外框卡片
-    ctx.fillStyle = cardBg
-    ctx.fillRect(100, 290, 600, 680)
-    ctx.strokeStyle = cardBorder
-    ctx.lineWidth = 3
-    ctx.strokeRect(100, 290, 600, 680)
-
-    // 繪製 QR Code 標題
-    ctx.fillStyle = qrColor
-    ctx.font = 'bold 24px "Microsoft JhengHei", sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(qrTitle, 400, 350)
-
-    // 繪製 QR Code 圖片
-    const imgTask = await loadImage(taskQrData)
-    ctx.drawImage(imgTask, 240, 390, 320, 320)
-
-    // 繪製 URL 與引導文字
-    ctx.fillStyle = qrColor
-    ctx.font = 'bold 15px "Microsoft JhengHei", sans-serif'
-    ctx.fillText(guide1, 400, 755)
-    
-    ctx.fillStyle = '#64748b'
-    ctx.font = '14px sans-serif'
-    ctx.fillText(guide2, 400, 785)
-    
-    ctx.font = '11px monospace'
-    wrapText(ctx, taskUrl, 400, 840, 520, 16)
 
     // 重設 textAlign 為 left
     ctx.textAlign = 'left'

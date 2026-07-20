@@ -64,12 +64,31 @@ export function useGameProgress() {
       const q = query(collection(db, 'levels'), where('is_active', '==', true))
       const snap = await getDocs(q)
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      // 依建立時間排序，確保關卡流程線性正確
+
+      // 取得流程設定的排序順序
+      const flowRef = doc(db, 'settings', 'flow')
+      const flowSnap = await getDoc(flowRef)
+      let sequence = []
+      if (flowSnap.exists()) {
+        sequence = flowSnap.data().sequence || []
+      }
+
+      // 依 sequence 排序；若 sequence 中找不到（例如新建立的關卡），則以 created_at 排序排在最後
       data.sort((a, b) => {
+        const idxA = sequence.indexOf(a.id)
+        const idxB = sequence.indexOf(b.id)
+
+        if (idxA !== -1 && idxB !== -1) {
+          return idxA - idxB
+        }
+        if (idxA !== -1) return -1
+        if (idxB !== -1) return 1
+
         const tA = a.created_at?.seconds || 0
         const tB = b.created_at?.seconds || 0
         return tA - tB
       })
+
       setLevels(data)
       return data
     } catch (err) {

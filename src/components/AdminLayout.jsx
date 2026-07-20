@@ -11,6 +11,7 @@ import {
   MenuUnfoldOutlined,
   ThunderboltOutlined,
   UserOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../hooks/useAuth'
 
@@ -20,12 +21,14 @@ const { Text } = Typography
 const NAV_ITEMS = [
   { key: '/admin/dashboard', icon: <DashboardOutlined />, label: '儀表板' },
   { key: '/admin/levels',    icon: <OrderedListOutlined />, label: '關卡管理' },
+  { key: '/admin/flow',      icon: <ApartmentOutlined />,   label: '流程設定' },
   { key: '/admin/players',   icon: <TeamOutlined />,       label: '玩家管理' },
 ]
 
 const BREADCRUMB_MAP = {
   '/admin/dashboard': '儀表板',
   '/admin/levels':    '關卡管理',
+  '/admin/flow':      '流程設定',
   '/admin/players':   '玩家管理',
 }
 
