@@ -355,7 +355,7 @@ export default function Task() {
             <Text type="secondary" strong style={{ display: 'block', fontSize: 11, letterSpacing: '0.05em', marginBottom: 8, textTransform: 'uppercase' }}>
               任務說明
             </Text>
-            <Paragraph style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: '#334155' }}>
+            <Paragraph style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: '#334155', whiteSpace: 'pre-wrap' }}>
               {level?.description}
             </Paragraph>
           </div>

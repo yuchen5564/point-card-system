@@ -344,8 +344,8 @@ export default function Home() {
                         >
                           {level.name}
                         </Title>
-                        <Paragraph ellipsis={{ rows: 1 }} style={{ margin: 0, fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                          {level.description}
+                        <Paragraph ellipsis={{ rows: 1 }} style={{ margin: 0, fontSize: 12, color: isAccessible ? '#6b7280' : '#9ca3af', marginTop: 2, fontStyle: isAccessible ? 'normal' : 'italic' }}>
+                          {isAccessible ? level.description : '🔒 掃描關卡 QR Code / NFC 貼紙解鎖任務'}
                         </Paragraph>
                       </div>
 
