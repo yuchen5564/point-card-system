@@ -30,6 +30,7 @@ export function useGameProgress() {
     }
   })
   const [levels, setLevels] = useState([])          // 全部啟用的關卡
+  const [workflowMode, setWorkflowMode] = useState('linear') // 闖關流程模式 (linear | independent)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -65,13 +66,17 @@ export function useGameProgress() {
       const snap = await getDocs(q)
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
 
-      // 取得流程設定的排序順序
+      // 取得流程設定的排序順序與模式
       const flowRef = doc(db, 'settings', 'flow')
       const flowSnap = await getDoc(flowRef)
       let sequence = []
+      let mode = 'linear'
       if (flowSnap.exists()) {
-        sequence = flowSnap.data().sequence || []
+        const flowData = flowSnap.data()
+        sequence = flowData.sequence || []
+        mode = flowData.mode || 'linear'
       }
+      setWorkflowMode(mode)
 
       // 依 sequence 排序；若 sequence 中找不到（例如新建立的關卡），則以 created_at 排序排在最後
       data.sort((a, b) => {
@@ -290,6 +295,7 @@ export function useGameProgress() {
     progress,
     unlocked,
     levels,
+    workflowMode,
     loading,
     error,
     setError,

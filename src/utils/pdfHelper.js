@@ -7,7 +7,7 @@ import { jsPDF } from 'jspdf'
  * @param {Array} activeLevels - 所有已啟用的關卡清單
  * @param {string} baseUrl - 根網址
  */
-export async function exportLevelsToPdf(activeLevels, baseUrl) {
+export async function exportLevelsToPdf(activeLevels, baseUrl, workflowMode = 'linear') {
   const doc = new jsPDF('p', 'mm', 'a4')
   
   // A4 大小：210mm x 297mm
@@ -17,7 +17,7 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
 
   for (let i = 0; i < activeLevels.length; i++) {
     const level = activeLevels[i]
-    const isLast = i === activeLevels.length - 1
+    const isLast = workflowMode === 'independent' || i === activeLevels.length - 1
     
     // 生成 QR Code 的 Base64
     const taskUrl = `${baseUrl}/task?level=${level.id}&token=${level.task_token}`
@@ -124,7 +124,7 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
       ctx.font = '11px monospace'
       wrapText(ctx, taskUrl, 400, 840, 520, 16)
     } else {
-      // 最後一關：繪製雙卡片 (左側領取任務，右側過關完成)
+      // 雙卡片模式 (最後一關，或獨立模式下的所有關卡)
       // 5.1 左側：任務領取貼紙區
       ctx.fillStyle = '#f8fafc'
       ctx.fillRect(40, 290, 340, 660)
@@ -136,7 +136,7 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
       ctx.fillStyle = '#ea580c'
       ctx.font = 'bold 22px "Microsoft JhengHei", sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('【 1. 最後一關領取任務 】', 210, 340)
+      ctx.fillText(workflowMode === 'independent' ? '【 1. 領取關卡任務 】' : '【 1. 最後一關領取任務 】', 210, 340)
 
       // 繪製 QR Code 圖片
       const imgTask = await loadImage(taskQrData)
@@ -146,7 +146,7 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
       ctx.fillStyle = '#64748b'
       ctx.font = '13px sans-serif'
       ctx.fillText('請將此 QR Code 貼在關卡入口', 210, 640)
-      ctx.fillText('玩家掃描後可查看最後一關任務說明', 210, 665)
+      ctx.fillText(workflowMode === 'independent' ? '玩家掃描後可查看此關卡任務說明' : '玩家掃描後可查看最後一關任務說明', 210, 665)
       ctx.font = '11px monospace'
       wrapText(ctx, taskUrl, 210, 720, 300, 16)
 
@@ -158,7 +158,7 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
 
       ctx.fillStyle = '#16a34a'
       ctx.font = 'bold 22px "Microsoft JhengHei", sans-serif'
-      ctx.fillText('【 2. 終點完成掃描過關 】', 590, 340)
+      ctx.fillText(workflowMode === 'independent' ? '【 2. 挑戰過關完成 】' : '【 2. 終點完成掃描過關 】', 590, 340)
 
       const imgComplete = await loadImage(completeQrData)
       ctx.drawImage(imgComplete, 480, 380, 220, 220)
@@ -168,7 +168,7 @@ export async function exportLevelsToPdf(activeLevels, baseUrl) {
       ctx.fillText('⚠ 警示：請由工作人員/關主保管', 590, 640)
       ctx.fillStyle = '#64748b'
       ctx.font = '13px sans-serif'
-      ctx.fillText('玩家完成全部任務後，掃描此碼過關', 590, 665)
+      ctx.fillText(workflowMode === 'independent' ? '玩家完成此關卡任務後，掃描此碼過關' : '玩家完成全部任務後，掃描此碼過關', 590, 665)
       ctx.font = '11px monospace'
       wrapText(ctx, completeUrl, 590, 720, 300, 16)
     }

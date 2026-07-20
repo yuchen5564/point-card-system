@@ -23,7 +23,7 @@ export default function Task() {
   const urlToken = params.get('token')
 
   const {
-    nickname, progress, unlocked, levels,
+    nickname, progress, unlocked, levels, workflowMode,
     fetchLevels, fetchPlayerProgress, updateProgressBatch
   } = useGameProgress()
 
@@ -64,11 +64,14 @@ export default function Task() {
           activeLevels = await fetchLevels()
         }
         
-        // 取得流程排序順序
+        // 取得流程排序順序與模式
         const flowSnap = await getDoc(doc(db, 'settings', 'flow'))
         let sequence = []
+        let currentMode = 'linear'
         if (flowSnap.exists()) {
-          sequence = flowSnap.data().sequence || []
+          const flowData = flowSnap.data()
+          sequence = flowData.sequence || []
+          currentMode = flowData.mode || 'linear'
         }
 
         const sorted = [...activeLevels].sort((a, b) => {
@@ -105,14 +108,39 @@ export default function Task() {
         // 4. 安全與順序檢查
         if (hasToken) {
           // 透過掃描進入：
-          if (currentIndex === 0) {
-            // 第一關：隨時可以掃描領取
+          if (currentMode === 'independent_random') {
+            // 獨立關卡隨機挑戰：沒有任何前置條件限制
             if (!hasUnlockedCurrent && !hasCompletedCurrent) {
               const res = await updateProgressBatch([], [data.id])
               if (res.success) {
                 setScanStatus({
                   type: 'success',
-                  message: '🎉 成功掃描第一關！已為您領取任務，開始挑戰吧！'
+                  message: `🎉 成功掃描！已為您領取任務「${data.name}」！`
+                })
+              } else {
+                setScanStatus({
+                  type: 'error',
+                  message: '❌ 領取任務失敗，請重新整理頁面再試。'
+                })
+              }
+            }
+          } else if (currentMode === 'independent_sequential') {
+            // 獨立關卡依序完成：必須先「完成」前一關才能領取這一關
+            if (currentIndex > 0) {
+              const prevLevel = sorted[currentIndex - 1]
+              const prevCompleted = completed.includes(prevLevel.id)
+              if (!prevCompleted) {
+                setSequenceError(`❌ 您尚未完成前一關「${prevLevel.name}」，請先完成前一關並掃描該關卡過關貼紙！`)
+                return
+              }
+            }
+            // 檢查通過，解鎖本關
+            if (!hasUnlockedCurrent && !hasCompletedCurrent) {
+              const res = await updateProgressBatch([], [data.id])
+              if (res.success) {
+                setScanStatus({
+                  type: 'success',
+                  message: `🎉 成功掃描！已為您領取任務「${data.name}」！`
                 })
               } else {
                 setScanStatus({
@@ -122,29 +150,48 @@ export default function Task() {
               }
             }
           } else {
-            // 後續關卡：檢查前一關是否已解鎖或已完成
-            const prevLevel = sorted[currentIndex - 1]
-            const prevUnlocked = unlockedList.includes(prevLevel.id)
-            const prevCompleted = completed.includes(prevLevel.id)
+            // 線性模式 (預設，且強制限性順序)
+            if (currentIndex === 0) {
+              // 第一關：隨時可以掃描領取
+              if (!hasUnlockedCurrent && !hasCompletedCurrent) {
+                const res = await updateProgressBatch([], [data.id])
+                if (res.success) {
+                  setScanStatus({
+                    type: 'success',
+                    message: '🎉 成功掃描第一關！已為您領取任務，開始挑戰吧！'
+                  })
+                } else {
+                  setScanStatus({
+                    type: 'error',
+                    message: '❌ 領取任務失敗，請重新整理頁面再試。'
+                  })
+                }
+              }
+            } else {
+              // 後續關卡：檢查前一關是否已解鎖或已完成
+              const prevLevel = sorted[currentIndex - 1]
+              const prevUnlocked = unlockedList.includes(prevLevel.id)
+              const prevCompleted = completed.includes(prevLevel.id)
 
-            if (!prevUnlocked && !prevCompleted) {
-              setSequenceError(`❌ 您尚未解鎖或完成前一關「${prevLevel.name}」，請依序進行闖關！`)
-              return
-            }
+              if (!prevUnlocked && !prevCompleted) {
+                setSequenceError(`❌ 您尚未解鎖或完成前一關「${prevLevel.name}」，請依序進行闖關！`)
+                return
+              }
 
-            // 第一次掃描該關卡 (完成前一關 + 領取下一關任務)
-            if (!hasUnlockedCurrent && !hasCompletedCurrent) {
-              const res = await updateProgressBatch([prevLevel.id], [data.id])
-              if (res.success) {
-                setScanStatus({
-                  type: 'success',
-                  message: `🎉 成功掃描！已為您完成前一關「${prevLevel.name}」，並領取新任務「${data.name}」！`
-                })
-              } else {
-                setScanStatus({
-                  type: 'error',
-                  message: '❌ 進度更新失敗，請稍後再試。'
-                })
+              // 第一次掃描該關卡 (完成前一關 + 領取下一關任務)
+              if (!hasUnlockedCurrent && !hasCompletedCurrent) {
+                const res = await updateProgressBatch([prevLevel.id], [data.id])
+                if (res.success) {
+                  setScanStatus({
+                    type: 'success',
+                    message: `🎉 成功掃描！已為您完成前一關「${prevLevel.name}」，並領取新任務「${data.name}」！`
+                  })
+                } else {
+                  setScanStatus({
+                    type: 'error',
+                    message: '❌ 進度更新失敗，請稍後再試。'
+                  })
+                }
               }
             }
           }
@@ -318,7 +365,9 @@ export default function Task() {
             <Alert
               message={
                 <Text style={{ fontSize: 13, color: '#0f766e' }}>
-                  {isLastLevel ? (
+                  {workflowMode?.startsWith('independent') ? (
+                    <span>完成任務後，請掃描旁邊的<strong>「過關貼紙」</strong>以記錄您的成果！</span>
+                  ) : isLastLevel ? (
                     <span>這是最後一關！完成任務後，請掃描<strong>「過關確認貼紙 / Tag」</strong>以累計點數並成功通關！</span>
                   ) : (
                     <span>完成任務後，請前往下一關並<strong>「掃描下一關的 QR Code / Tag」</strong>以領取新任務同時過關！</span>

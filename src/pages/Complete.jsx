@@ -43,15 +43,21 @@ export default function Complete() {
     }
 
     try {
-      // 取得所有啟用的關卡與目前的順序設定，以驗證此關卡是否為最後一關
+      // 確保獲取該暱稱在 Firestore 中最即時的過關與解鎖資料
+      const { completed, unlockedList } = await fetchPlayerProgress(activeNick)
+
+      // 取得所有啟用的關卡與目前的順序設定，以驗證此關卡是否為最後一關或符合順序
       const q = query(collection(db, 'levels'), where('is_active', '==', true))
       const snapLevels = await getDocs(q)
       const activeLevels = snapLevels.docs.map(d => ({ id: d.id, ...d.data() }))
 
       const flowSnap = await getDoc(doc(db, 'settings', 'flow'))
       let sequence = []
+      let mode = 'linear'
       if (flowSnap.exists()) {
-        sequence = flowSnap.data().sequence || []
+        const flowData = flowSnap.data()
+        sequence = flowData.sequence || []
+        mode = flowData.mode || 'linear'
       }
 
       activeLevels.sort((a, b) => {
@@ -66,20 +72,30 @@ export default function Complete() {
       })
 
       if (activeLevels.length > 0) {
-        const lastLevel = activeLevels[activeLevels.length - 1]
-        if (levelId !== lastLevel.id) {
-          setErrorMsg('此過關連結無效。本遊戲僅在最後一關設有過關確認貼紙，其他關卡請直接掃描下一關的任務貼紙過關！')
-          setStatus(STATUS.ERROR)
-          return
+        const currentIndex = activeLevels.findIndex(l => l.id === levelId)
+
+        // 如果是線性模式，只有最後一關能使用 Complete 網頁過關
+        if (mode === 'linear') {
+          const lastLevel = activeLevels[activeLevels.length - 1]
+          if (levelId !== lastLevel.id) {
+            setErrorMsg('此過關連結無效。本遊戲目前設定為線性模式，僅在最後一關設有過關確認貼紙，其他關卡請直接掃描下一關的任務貼紙過關！')
+            setStatus(STATUS.ERROR)
+            return
+          }
+        } else if (mode === 'independent_sequential' && currentIndex > 0) {
+          // 如果是獨立關卡依序完成，過關時必須確認前一關已經「完成」
+          const prevLevel = activeLevels[currentIndex - 1]
+          if (!completed.includes(prevLevel.id)) {
+            setErrorMsg(`您尚未完成前一關「${prevLevel.name}」，無法進行此關卡的過關驗證！`)
+            setStatus(STATUS.ERROR)
+            return
+          }
         }
       } else {
         setErrorMsg('目前無啟用的關卡。')
         setStatus(STATUS.ERROR)
         return
       }
-
-      // 確保獲取該暱稱在 Firestore 中最即時的過關與解鎖資料
-      const { completed, unlockedList } = await fetchPlayerProgress(activeNick)
 
       // 保護機制：檢查玩家是否已經領取/解鎖此關卡
       if (!unlockedList.includes(levelId)) {

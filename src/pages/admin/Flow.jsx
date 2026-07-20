@@ -9,7 +9,7 @@ import AdminLayout from '../../components/AdminLayout'
 import { generatePassToken, buildTaskUrl, buildCompleteUrl } from '../../utils/tokenHelper'
 import { exportLevelsToPdf } from '../../utils/pdfHelper'
 import {
-  Table, Button, Card, Space, Typography, message, Row, Col, Alert, Steps, Tag, Empty, Badge
+  Table, Button, Card, Space, Typography, message, Row, Col, Alert, Steps, Tag, Empty, Badge, Radio
 } from 'antd'
 import {
   ArrowUpOutlined, ArrowDownOutlined, SaveOutlined, FilePdfOutlined,
@@ -27,6 +27,7 @@ export default function Flow() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [finalized, setFinalized] = useState(false)
+  const [mode, setMode] = useState('linear') // linear | independent
 
   // 1. 取得所有啟用的關卡與目前的順序設定
   const fetchFlowLevels = async () => {
@@ -44,12 +45,16 @@ export default function Flow() {
 
       setActiveLevels(levelsData)
 
-      // 取得目前儲存的順序
+      // 取得目前儲存的順序與模式
       const flowSnap = await getDoc(doc(db, 'settings', 'flow'))
       let sequence = []
+      let loadedMode = 'linear'
       if (flowSnap.exists()) {
-        sequence = flowSnap.data().sequence || []
+        const flowData = flowSnap.data()
+        sequence = flowData.sequence || []
+        loadedMode = flowData.mode || 'linear'
       }
+      setMode(loadedMode)
 
       // 進行排序
       const sorted = [...levelsData].sort((a, b) => {
@@ -125,9 +130,10 @@ export default function Flow() {
         })
       )
 
-      // 儲存順序設定
+      // 儲存順序與模式設定
       await setDoc(doc(db, 'settings', 'flow'), {
         sequence,
+        mode,
         last_updated: serverTimestamp(),
       })
 
@@ -151,7 +157,7 @@ export default function Flow() {
     setExporting(true)
     message.loading({ content: '正在產生 QR Code PDF 文件...', key: 'pdf_export' })
     try {
-      await exportLevelsToPdf(sortedLevels, BASE_URL)
+      await exportLevelsToPdf(sortedLevels, BASE_URL, mode)
       message.success({ content: 'PDF 檔案下載成功！', key: 'pdf_export' })
     } catch (err) {
       console.error(err)
@@ -253,19 +259,24 @@ export default function Flow() {
       render: (_, record, index) => {
         const taskUrl = buildTaskUrl(BASE_URL, record.id, record.task_token)
         const isLast = index === sortedLevels.length - 1
+        const isInd = mode?.startsWith('independent')
         
-        if (isLast) {
+        if (isInd || isLast) {
           const completeUrl = buildCompleteUrl(BASE_URL, record.id, record.pass_token)
           return (
             <Space direction="vertical" style={{ width: '100%' }} size={4}>
               <div>
-                <Tag color="orange">任務領取說明 (Task URL)</Tag>
+                <Tag color={isLast && !isInd ? 'orange' : 'blue'}>
+                  {isInd ? '任務領取貼紙 (Task URL)' : '任務領取說明 (Task URL)'}
+                </Tag>
                 <Text copyable={{ text: taskUrl }} style={{ fontSize: 12, wordBreak: 'break-all', fontFamily: 'monospace' }}>
                   {taskUrl}
                 </Text>
               </div>
               <div style={{ marginTop: 4 }}>
-                <Tag color="success">終點完成過關 (Complete URL)</Tag>
+                <Tag color="success">
+                  {isInd ? '過關完成貼紙 (Complete URL)' : '終點完成過關 (Complete URL)'}
+                </Tag>
                 <Text copyable={{ text: completeUrl }} style={{ fontSize: 12, wordBreak: 'break-all', fontFamily: 'monospace' }}>
                   {completeUrl}
                 </Text>
@@ -290,9 +301,39 @@ export default function Flow() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>關卡流程排序設定</Title>
-          <Text type="secondary">在此設定關卡的先後順序，定案後系統將統一產生所有實體貼紙的連結</Text>
+          <Text type="secondary">在此設定關卡的先後順序與模式，定案後系統將統一產生所有實體貼紙的連結</Text>
         </div>
       </div>
+
+      {/* 闖關流程模式設定 */}
+      <Card
+        title="闖關流程模式設定"
+        bordered={false}
+        style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: 24 }}
+      >
+        <Radio.Group onChange={(e) => setMode(e.target.value)} value={mode}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Radio value="linear">
+              <Text strong>線性闖關模式 (預設)</Text>
+              <Paragraph type="secondary" style={{ margin: '4px 0 0 24px', fontSize: 13 }}>
+                玩家掃描下一關的貼紙，即代表「完成前一關任務」並「領取新關卡任務」；僅有最後一關設有獨立的過關確認貼紙。（強制限性順序）
+              </Paragraph>
+            </Radio>
+            <Radio value="independent_sequential" style={{ marginTop: 12 }}>
+              <Text strong>獨立關卡模式 - 依序完成</Text>
+              <Paragraph type="secondary" style={{ margin: '4px 0 0 24px', fontSize: 13 }}>
+                每一關皆包含「領取任務貼紙」與「過關完成貼紙」，且**必須完成前一關**並掃描過關貼紙後，才能領取下一關的任務。
+              </Paragraph>
+            </Radio>
+            <Radio value="independent_random" style={{ marginTop: 12 }}>
+              <Text strong>獨立關卡模式 - 隨機完成</Text>
+              <Paragraph type="secondary" style={{ margin: '4px 0 0 24px', fontSize: 13 }}>
+                每一關皆包含「領取任務貼紙」與「過關完成貼紙」，玩家可以**任意順序**自由挑戰與過關，無任何先後關卡順序限制。
+              </Paragraph>
+            </Radio>
+          </Space>
+        </Radio.Group>
+      </Card>
 
       <Row gutter={[24, 24]}>
         {/* 左側：排序與流程展示 */}
