@@ -9,7 +9,7 @@ import AdminLayout from '../../components/AdminLayout'
 import { generatePassToken, buildTaskUrl, buildCompleteUrl } from '../../utils/tokenHelper'
 import { exportLevelsToPdf } from '../../utils/pdfHelper'
 import {
-  Table, Button, Card, Space, Typography, message, Row, Col, Alert, Steps, Tag, Empty, Badge, Radio
+  Table, Button, Card, Space, Typography, message, Row, Col, Alert, Steps, Tag, Empty, Badge, Select
 } from 'antd'
 import {
   ArrowUpOutlined, ArrowDownOutlined, SaveOutlined, FilePdfOutlined,
@@ -311,28 +311,44 @@ export default function Flow() {
         bordered={false}
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: 24 }}
       >
-        <Radio.Group onChange={(e) => setMode(e.target.value)} value={mode}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Radio value="linear">
-              <Text strong>線性闖關模式 (預設)</Text>
-              <Paragraph type="secondary" style={{ margin: '4px 0 0 24px', fontSize: 13 }}>
-                玩家掃描下一關的貼紙，即代表「完成前一關任務」並「領取新關卡任務」；僅有最後一關設有獨立的過關確認貼紙。（強制限性順序）
-              </Paragraph>
-            </Radio>
-            <Radio value="independent_sequential" style={{ marginTop: 12 }}>
-              <Text strong>獨立關卡模式 - 依序完成</Text>
-              <Paragraph type="secondary" style={{ margin: '4px 0 0 24px', fontSize: 13 }}>
-                每一關皆包含「領取任務貼紙」與「過關完成貼紙」，且**必須完成前一關**並掃描過關貼紙後，才能領取下一關的任務。
-              </Paragraph>
-            </Radio>
-            <Radio value="independent_random" style={{ marginTop: 12 }}>
-              <Text strong>獨立關卡模式 - 隨機完成</Text>
-              <Paragraph type="secondary" style={{ margin: '4px 0 0 24px', fontSize: 13 }}>
-                每一關皆包含「領取任務貼紙」與「過關完成貼紙」，玩家可以**任意順序**自由挑戰與過關，無任何先後關卡順序限制。
-              </Paragraph>
-            </Radio>
-          </Space>
-        </Radio.Group>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Select
+            value={mode}
+            onChange={(value) => setMode(value)}
+            style={{ width: '100%', maxWidth: 350 }}
+            options={[
+              { value: 'linear', label: '線性闖關模式 (預設)' },
+              { value: 'independent_sequential', label: '獨立關卡模式 - 依序完成' },
+              { value: 'independent_random', label: '獨立關卡模式 - 隨機完成' }
+            ]}
+          />
+          <div style={{ padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            {mode === 'linear' && (
+              <div>
+                <Text strong style={{ color: '#4f46e5' }}>線性闖關模式 (預設)</Text>
+                <Paragraph style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+                  玩家掃描下一關的貼紙，即代表「完成前一關任務」並「領取新關卡任務」；僅有最後一關設有獨立的過關確認貼紙。（強制限性順序）
+                </Paragraph>
+              </div>
+            )}
+            {mode === 'independent_sequential' && (
+              <div>
+                <Text strong style={{ color: '#0ea5e9' }}>獨立關卡模式 - 依序完成</Text>
+                <Paragraph style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+                  每一關皆包含「領取任務貼紙」與「過關完成貼紙」，且**必須完成前一關**並掃描過關貼紙後，才能領取下一關的任務。
+                </Paragraph>
+              </div>
+            )}
+            {mode === 'independent_random' && (
+              <div>
+                <Text strong style={{ color: '#10b981' }}>獨立關卡模式 - 隨機完成</Text>
+                <Paragraph style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+                  每一關皆包含「領取任務貼紙」與「過關完成貼紙」，玩家可以**任意順序**自由挑戰與過關，無任何先後關卡順序限制。
+                </Paragraph>
+              </div>
+            )}
+          </div>
+        </Space>
       </Card>
 
       <Row gutter={[24, 24]}>
@@ -370,6 +386,7 @@ export default function Flow() {
                 loading={loading}
                 pagination={false}
                 size="middle"
+                scroll={{ x: 'max-content' }}
               />
             )}
           </Card>
@@ -464,6 +481,7 @@ export default function Flow() {
                 loading={loading}
                 pagination={false}
                 size="middle"
+                scroll={{ x: 750 }}
               />
             )}
           </Card>
