@@ -18,9 +18,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-/** Firestore 資料庫實例 — 啟用 experimentalForceLongPolling 解決 Safari 連線緩慢、卡住的問題 */
+/** Firestore 資料庫實例 — 啟用 experimentalForceLongPolling 與關閉 useFetchStreams 解決 Safari 連線緩慢、卡住與頁面無法載入的相容性問題 */
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
+  useFetchStreams: false,
 })
 
 /** Firebase Authentication 實例（後台管理員專用） */
