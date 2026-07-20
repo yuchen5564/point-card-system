@@ -1,12 +1,11 @@
 // src/pages/Task.jsx — Ant Design 版
-
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useGameProgress } from '../hooks/useGameProgress'
 import {
-  Card, Button, Spin, Alert, Typography, Tag, Space, Result
+  Card, Button, Spin, Alert, Typography, Tag, Result
 } from 'antd'
 import {
   ArrowLeftOutlined, ThunderboltOutlined, EnvironmentOutlined,
@@ -23,10 +22,17 @@ export default function Task() {
   const levelId = params.get('level')
   const urlToken = params.get('token')
 
-  const { nickname, progress, unlocked, unlockLevel, fetchPlayerProgress } = useGameProgress()
+  const {
+    nickname, progress, unlocked, levels,
+    fetchLevels, updateProgressBatch
+  } = useGameProgress()
+
   const [level, setLevel] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [sequenceError, setSequenceError] = useState(null)
+  const [scanStatus, setScanStatus] = useState(null)
+  const [isLastLevel, setIsLastLevel] = useState(false)
 
   const isDone = progress.includes(levelId)
   const isPreviouslyUnlocked = unlocked.includes(levelId)
@@ -49,40 +55,154 @@ export default function Task() {
       return
     }
 
-    const fetch = async () => {
+    const fetchAndProcess = async () => {
       setLoading(true)
       try {
-        const ref = doc(db, 'levels', levelId)
-        const snap = await getDoc(ref)
-        if (!snap.exists() || snap.data().is_active === false) {
-          setNotFound(true)
-        } else {
-          const data = { id: snap.id, ...snap.data() }
+        // 1. 取得並排序所有啟用關卡
+        let activeLevels = levels
+        if (!activeLevels || activeLevels.length === 0) {
+          activeLevels = await fetchLevels()
+        }
+        
+        const sorted = [...activeLevels].sort((a, b) => {
+          const tA = a.created_at?.seconds || 0
+          const tB = b.created_at?.seconds || 0
+          return tA - tB
+        })
 
-          // 安全檢查：如果玩家沒有解鎖過這關，且網址傳入的 token 錯誤，則判定為找不到關卡
-          const verified = isDone || isPreviouslyUnlocked || (data.task_token === urlToken && urlToken)
-          if (!verified) {
-            setNotFound(true)
+        // 2. 找到當前關卡
+        const data = sorted.find(l => l.id === levelId)
+        if (!data || data.is_active === false) {
+          setNotFound(true)
+          return
+        }
+
+        setLevel(data)
+
+        const currentIndex = sorted.findIndex(l => l.id === levelId)
+        const isLast = currentIndex === sorted.length - 1
+        setIsLastLevel(isLast)
+
+        const hasToken = urlToken && urlToken === data.task_token
+        const hasUnlockedCurrent = unlocked.includes(levelId)
+        const hasCompletedCurrent = progress.includes(levelId)
+
+        // 3. 安全與順序檢查
+        if (hasToken) {
+          // 透過掃描進入：
+          if (currentIndex === 0) {
+            // 第一關：隨時可以掃描領取
+            if (!hasUnlockedCurrent && !hasCompletedCurrent) {
+              const res = await updateProgressBatch([], [data.id])
+              if (res.success) {
+                setScanStatus({
+                  type: 'success',
+                  message: '🎉 成功掃描第一關！已為您領取任務，開始挑戰吧！'
+                })
+              } else {
+                setScanStatus({
+                  type: 'error',
+                  message: '❌ 領取任務失敗，請重新整理頁面再試。'
+                })
+              }
+            }
           } else {
-            setLevel(data)
-            // 自動加為已解鎖，供首頁點擊使用
-            unlockLevel(data.id)
+            // 後續關卡：檢查前一關是否已解鎖或已完成
+            const prevLevel = sorted[currentIndex - 1]
+            const prevUnlocked = unlocked.includes(prevLevel.id)
+            const prevCompleted = progress.includes(prevLevel.id)
+
+            if (!prevUnlocked && !prevCompleted) {
+              setSequenceError(`❌ 您尚未解鎖或完成前一關「${prevLevel.name}」，請依序進行闖關！`)
+              return
+            }
+
+            // 如果是最後一關且已經解鎖過：這次掃描代表完成最後一關任務
+            if (isLast && hasUnlockedCurrent) {
+              if (!hasCompletedCurrent) {
+                const res = await updateProgressBatch([data.id], [])
+                if (res.success) {
+                  setScanStatus({
+                    type: 'success',
+                    message: '🏆 成功掃描最後一關！恭喜您完成本關，並成功通關所有關卡！'
+                  })
+                } else {
+                  setScanStatus({
+                    type: 'error',
+                    message: '❌ 進度更新失敗，請稍後再試。'
+                  })
+                }
+              }
+            } else {
+              // 否則，若是第一次掃描該關卡 (完成前一關 + 領取下一關)
+              if (!hasUnlockedCurrent && !hasCompletedCurrent) {
+                const res = await updateProgressBatch([prevLevel.id], [data.id])
+                if (res.success) {
+                  setScanStatus({
+                    type: 'success',
+                    message: `🎉 成功掃描！已為您完成前一關「${prevLevel.name}」，並領取新任務「${data.name}」！`
+                  })
+                } else {
+                  setScanStatus({
+                    type: 'error',
+                    message: '❌ 進度更新失敗，請稍後再試。'
+                  })
+                }
+              }
+            }
+          }
+        } else {
+          // 從首頁查看或手動輸入網址，必須是已經解鎖或已完成的關卡才能查看
+          if (!hasUnlockedCurrent && !hasCompletedCurrent) {
+            setNotFound(true)
+            return
           }
         }
-      } catch {
+      } catch (err) {
+        console.error(err)
         setNotFound(true)
       } finally {
         setLoading(false)
       }
     }
-    fetch()
-  }, [levelId, urlToken, nickname, isDone, isPreviouslyUnlocked, unlockLevel])
+
+    fetchAndProcess()
+  }, [levelId, urlToken, nickname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── 載入中 ── */
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f7fb' }}>
         <Spin size="large" tip="載入關卡中..." />
+      </div>
+    )
+  }
+
+  /* ── 順序錯誤 ── */
+  if (sequenceError) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f7fb', padding: 16 }}>
+        <Card style={{ width: '100%', maxWidth: 400, borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+          <Result
+            status="warning"
+            title="無法挑戰此關卡"
+            subTitle={sequenceError}
+            extra={
+              <Button
+                type="primary"
+                onClick={() => navigate('/')}
+                style={{
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, #4f46e5, #0ea5e9)',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(79,70,229,0.2)'
+                }}
+              >
+                返回首頁查看進度
+              </Button>
+            }
+          />
+        </Card>
       </div>
     )
   }
@@ -147,6 +267,18 @@ export default function Task() {
 
       <main style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         
+        {/* 掃描狀態回饋 */}
+        {scanStatus && (
+          <Alert
+            message={scanStatus.message}
+            type={scanStatus.type}
+            showIcon
+            closable
+            onClose={() => setScanStatus(null)}
+            style={{ borderRadius: 12 }}
+          />
+        )}
+
         {/* 關卡主要卡片 */}
         <Card
           bordered={false}
@@ -188,14 +320,18 @@ export default function Task() {
           {!isDone && (
             <Alert
               message={
-                <Text style={{ fontSize: 13, color: '#92400e' }}>
-                  完成任務後，請掃描旁邊的<strong>「過關貼紙」</strong>以記錄您的成果！
+                <Text style={{ fontSize: 13, color: '#0f766e' }}>
+                  {isLastLevel ? (
+                    <span>這是最後一關！完成任務後，<strong>「再次掃描此 QR Code / Tag」</strong>即可通關並完成任務！</span>
+                  ) : (
+                    <span>完成任務後，請前往下一關並<strong>「掃描下一關的 QR Code / Tag」</strong>以領取新任務同時過關！</span>
+                  )}
                 </Text>
               }
-              type="warning"
+              type="info"
               showIcon
-              icon={<InfoCircleOutlined style={{ color: '#d97706' }} />}
-              style={{ marginTop: 20, borderRadius: 10, border: '1px solid #fde68a', background: '#fffbeb' }}
+              icon={<InfoCircleOutlined style={{ color: '#0d9488' }} />}
+              style={{ marginTop: 20, borderRadius: 10, border: '1px solid #99f6e4', background: '#f0fdfa' }}
             />
           )}
         </Card>

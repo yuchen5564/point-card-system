@@ -294,18 +294,12 @@ export default function Levels() {
           expandable={{
             expandedRowRender: (record) => {
               const taskUrl = buildTaskUrl(BASE_URL, record.id, record.task_token)
-              const completeUrl = buildCompleteUrl(BASE_URL, record.id, record.pass_token)
               return (
                 <div style={{ padding: '8px 16px', background: '#fafafa', borderRadius: 8 }}>
                   <Descriptions title="NFC 連結資訊" bordered size="small" column={1} layout="vertical">
-                    <Descriptions.Item label="任務掃描貼紙 (Task URL)">
+                    <Descriptions.Item label="關卡掃描貼紙 (Scan URL)">
                       <Space>
                         <Text copyable={{ text: taskUrl }} style={{ fontSize: 13, wordBreak: 'break-all' }}>{taskUrl}</Text>
-                      </Space>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="過關確認貼紙 (Complete URL)">
-                      <Space>
-                        <Text copyable={{ text: completeUrl }} style={{ fontSize: 13, wordBreak: 'break-all' }}>{completeUrl}</Text>
                       </Space>
                     </Descriptions.Item>
                   </Descriptions>

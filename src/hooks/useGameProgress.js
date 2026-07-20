@@ -64,6 +64,12 @@ export function useGameProgress() {
       const q = query(collection(db, 'levels'), where('is_active', '==', true))
       const snap = await getDocs(q)
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      // 依建立時間排序，確保關卡流程線性正確
+      data.sort((a, b) => {
+        const tA = a.created_at?.seconds || 0
+        const tB = b.created_at?.seconds || 0
+        return tA - tB
+      })
       setLevels(data)
       return data
     } catch (err) {
@@ -189,6 +195,60 @@ export function useGameProgress() {
     }
   }, [nickname])
 
+  // ── 批量更新完成與解鎖進度（避免多次寫入衝突與狀態同步問題） ────────
+  const updateProgressBatch = useCallback(async (completeIds, unlockIds) => {
+    const activeNick = nickname || localStorage.getItem(LS_KEY)
+    if (!activeNick) return { success: false, error: '尚未登錄暱稱' }
+    try {
+      setLoading(true)
+      const ref = doc(db, 'players', activeNick)
+      
+      const updateData = {
+        last_updated: serverTimestamp(),
+      }
+      
+      if (completeIds && completeIds.length > 0) {
+        updateData.completed_levels = arrayUnion(...completeIds)
+        // 已完成的關卡，理所當然也屬於已解鎖
+        updateData.unlocked_levels = arrayUnion(...completeIds, ...(unlockIds || []))
+      } else if (unlockIds && unlockIds.length > 0) {
+        updateData.unlocked_levels = arrayUnion(...unlockIds)
+      }
+      
+      await updateDoc(ref, updateData)
+      
+      if (completeIds && completeIds.length > 0) {
+        setProgress(prev => {
+          const next = [...prev]
+          completeIds.forEach(id => {
+            if (!next.includes(id)) next.push(id)
+          })
+          return next
+        })
+      }
+      
+      const allNewUnlocks = [...(completeIds || []), ...(unlockIds || [])]
+      if (allNewUnlocks.length > 0) {
+        setUnlocked(prev => {
+          const next = [...prev]
+          allNewUnlocks.forEach(id => {
+            if (!next.includes(id)) next.push(id)
+          })
+          localStorage.setItem(LS_UNLOCKED_KEY, JSON.stringify(next))
+          return next
+        })
+      }
+      
+      return { success: true }
+    } catch (err) {
+      console.error('updateProgressBatch error:', err)
+      setError('更新進度失敗，請稍後再試。')
+      return { success: false, error: err.message }
+    } finally {
+      setLoading(false)
+    }
+  }, [nickname])
+
   // ── 清除暱稱（登出） ─────────────────────────────────────────────────
   const clearNickname = useCallback(() => {
     localStorage.removeItem(LS_KEY)
@@ -198,11 +258,11 @@ export function useGameProgress() {
     setUnlocked([])
   }, [])
 
-  // 初始化時若已有暱稱，自動同步進度
+  // 載入時自動同步關卡與進度
   useEffect(() => {
+    fetchLevels()
     if (nickname) {
       fetchPlayerProgress(nickname)
-      fetchLevels()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -221,5 +281,6 @@ export function useGameProgress() {
     unlockLevel,
     checkNicknameExists,
     clearNickname,
+    updateProgressBatch,
   }
 }
